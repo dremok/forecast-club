@@ -1,6 +1,8 @@
-# Calibrate
+# Forecast Club
 
 **Prediction tracker for intellectual communities. Track forecasts, score calibration, compete with friends.**
+
+*"Don't you forget about me" — but for predictions*
 
 ## The Problem
 
@@ -17,7 +19,7 @@ A simple app where you:
 
 ## Key Differentiator
 
-Unlike Metaculus (complex, public) or Manifold (trading-focused), Calibrate is:
+Unlike Metaculus (complex, public) or Manifold (trading-focused), Forecast Club is:
 - **For private groups** — your friend circle, team, or community
 - **Simple** — no play money, no trading, just probabilities
 - **Calibration-focused** — emphasizes being well-calibrated over being "right"
@@ -171,7 +173,7 @@ Interpretation: If you say "70% confident" on 10 predictions, ~7 should resolve 
 ## Project Structure
 
 ```
-calibrate/
+forecast-club/
 ├── app/
 │   ├── __init__.py
 │   ├── main.py               # FastAPI app, middleware
@@ -261,8 +263,8 @@ calibrate/
 
 ```bash
 # Clone
-git clone git@github.com:dremok/calibrate.git
-cd calibrate
+git clone git@github.com:dremok/forecast-club.git
+cd forecast-club
 
 # Setup
 python -m venv .venv
