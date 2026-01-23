@@ -1,0 +1,46 @@
+{% if predictions %}
+    {% for prediction in predictions %}
+    <div class="card prediction-card {{ prediction.status.value }}">
+        <div class="prediction-title">
+            <a href="/predictions/{{ prediction.id }}">{{ prediction.title }}</a>
+        </div>
+        <div class="prediction-meta">
+            <span>{{ prediction.group.name }}</span>
+            <span>by {{ prediction.creator.display_name or prediction.creator.email }}</span>
+            <span>Resolves {{ prediction.resolution_date.strftime('%b %d, %Y') }}</span>
+        </div>
+        <div class="prediction-stats">
+            <div class="stat">
+                <span class="stat-value">{{ prediction.forecasts|length }}</span>
+                <span class="stat-label">forecasts</span>
+            </div>
+            {% if prediction.forecasts %}
+            <div class="stat">
+                <span class="stat-value">{{ "%.0f"|format(prediction.forecasts|map(attribute='probability')|list|sum / prediction.forecasts|length * 100) }}%</span>
+                <span class="stat-label">avg probability</span>
+            </div>
+            {% endif %}
+            <div class="stat">
+                {% if prediction.status.value == 'open' %}
+                    {% if prediction.is_locked %}
+                    <span class="badge badge-locked">Locked</span>
+                    {% else %}
+                    <span class="badge badge-open">Open</span>
+                    {% endif %}
+                {% elif prediction.status.value == 'resolved_yes' %}
+                <span class="badge badge-yes">Yes</span>
+                {% elif prediction.status.value == 'resolved_no' %}
+                <span class="badge badge-no">No</span>
+                {% else %}
+                <span class="badge badge-ambiguous">Ambiguous</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+<div class="empty-state">
+    <h2>No predictions yet</h2>
+    <p>Be the first to create one!</p>
+</div>
+{% endif %}

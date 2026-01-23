@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Log in - Forecast Club{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-card">
+        <h1>Welcome back</h1>
+        <p>Enter your email to receive a magic link</p>
+
+        <form hx-post="/login" hx-swap="innerHTML" hx-target="#form-result">
+            <div class="form-group">
+                <input
+                    type="email"
+                    name="email"
+                    placeholder="you@example.com"
+                    required
+                    autocomplete="email"
+                >
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">
+                Send magic link
+            </button>
+        </form>
+
+        <div id="form-result" class="mt-4"></div>
+    </div>
+</div>
+{% endblock %}

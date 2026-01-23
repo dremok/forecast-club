@@ -1,0 +1,27 @@
+<div class="card">
+    <h2>Forecasts ({{ forecasts|length }})</h2>
+
+    {% if forecasts %}
+    <ul class="forecast-list">
+        {% for forecast in forecasts %}
+        <li class="forecast-item">
+            <div>
+                <span class="forecast-user">
+                    {{ forecast.user.display_name or forecast.user.email }}
+                    {% if forecast.user.id == user.id %}(you){% endif %}
+                </span>
+                {% if forecast.reasoning %}
+                <p class="text-muted mt-1" style="font-size: 0.875rem;">{{ forecast.reasoning }}</p>
+                {% endif %}
+                {% if brier_scores and brier_scores.get(forecast.id) is not none %}
+                <span class="forecast-score">Brier: {{ "%.3f"|format(brier_scores[forecast.id]) }}</span>
+                {% endif %}
+            </div>
+            <span class="forecast-prob">{{ "%.0f"|format(forecast.probability * 100) }}%</span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-muted">No forecasts yet. Be the first!</p>
+    {% endif %}
+</div>

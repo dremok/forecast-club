@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}{{ prediction.title }} - Forecast Club{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="/feed" class="text-muted">&larr; Back to feed</a>
+</div>
+
+<div class="card prediction-card {{ prediction.status.value }}">
+    <h1 class="prediction-title">{{ prediction.title }}</h1>
+
+    <div class="prediction-meta mb-3">
+        <span>{{ prediction.group.name }}</span>
+        <span>by {{ prediction.creator.display_name or prediction.creator.email }}</span>
+        <span>Resolves {{ prediction.resolution_date.strftime('%b %d, %Y') }}</span>
+    </div>
+
+    {% if prediction.status.value == 'open' %}
+    <div class="lock-in-info mb-3">
+        {% if prediction.is_locked %}
+        <span class="badge badge-locked">Forecasts Locked</span>
+        <span class="text-muted">Locked on {{ prediction.lock_in_at.strftime('%b %d, %Y at %H:%M') }}</span>
+        {% else %}
+        <span class="badge badge-open">Forecasting Open</span>
+        <span class="text-muted">Lock-in deadline: {{ prediction.lock_in_at.strftime('%b %d, %Y at %H:%M') }}</span>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if prediction.description %}
+    <p>{{ prediction.description }}</p>
+    {% endif %}
+
+    {% if prediction.resolution_criteria %}
+    <div class="mb-3">
+        <strong>Resolution criteria:</strong>
+        <p class="text-muted">{{ prediction.resolution_criteria }}</p>
+    </div>
+    {% endif %}
+
+    <div class="flex flex-between flex-center mt-4">
+        {% if prediction.status.value == 'open' %}
+        <span class="badge badge-open">Open</span>
+        {% elif prediction.status.value == 'resolved_yes' %}
+        <span class="badge badge-yes">Resolved: Yes</span>
+        {% elif prediction.status.value == 'resolved_no' %}
+        <span class="badge badge-no">Resolved: No</span>
+        {% else %}
+        <span class="badge badge-ambiguous">Ambiguous</span>
+        {% endif %}
+
+        {% if can_resolve and prediction.status.value == 'open' %}
+        <div class="flex gap-2">
+            <form method="POST" action="/predictions/{{ prediction.id }}/resolve" style="display:inline">
+                <input type="hidden" name="outcome" value="resolved_yes">
+                <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Resolve as YES?')">Yes</button>
+            </form>
+            <form method="POST" action="/predictions/{{ prediction.id }}/resolve" style="display:inline">
+                <input type="hidden" name="outcome" value="resolved_no">
+                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Resolve as NO?')">No</button>
+            </form>
+            <form method="POST" action="/predictions/{{ prediction.id }}/resolve" style="display:inline">
+                <input type="hidden" name="outcome" value="ambiguous">
+                <button type="submit" class="btn btn-secondary btn-sm" onclick="return confirm('Mark as ambiguous?')">Ambiguous</button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add forecast form (if open and not locked) -->
+{% if prediction.status.value == 'open' and not prediction.is_locked %}
+<div class="card" id="forecast-form">
+    <h2>{% if user_forecast %}Update your forecast{% else %}Add your forecast{% endif %}</h2>
+
+    <form hx-post="/predictions/{{ prediction.id }}/forecast"
+          hx-target="#forecasts-section"
+          hx-swap="outerHTML">
+        <div class="form-group">
+            <label>Your probability</label>
+            <div class="probability-input">
+                <input type="range"
+                       name="probability"
+                       min="0" max="100" step="1"
+                       value="{{ (user_forecast.probability * 100)|int if user_forecast else 50 }}"
+                       oninput="this.nextElementSibling.textContent = this.value + '%'">
+                <span class="probability-value">{{ (user_forecast.probability * 100)|int if user_forecast else 50 }}%</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Reasoning (optional)</label>
+            <textarea name="reasoning" placeholder="Why do you think this?">{{ user_forecast.reasoning if user_forecast else '' }}</textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            {% if user_forecast %}Update forecast{% else %}Submit forecast{% endif %}
+        </button>
+    </form>
+</div>
+{% elif prediction.status.value == 'open' and prediction.is_locked and not user_forecast %}
+<div class="card">
+    <p class="text-muted">Forecasts are locked. You did not submit a forecast before the deadline.</p>
+</div>
+{% endif %}
+
+<!-- Forecasts list -->
+<div id="forecasts-section">
+    {% include "partials/forecasts_list.html" %}
+</div>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Join Group - Forecast Club{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="/profile" class="text-muted">&larr; Back to profile</a>
+</div>
+
+<h1>Join a Group</h1>
+
+<div class="card">
+    <form method="POST" action="/groups/join">
+        <div class="form-group">
+            <label for="invite_code">Invite code</label>
+            <input type="text" name="invite_code" id="invite_code" required
+                   placeholder="e.g., abc123xyz">
+            <p class="help-text">Get this from someone already in the group</p>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">Join group</button>
+    </form>
+</div>
+{% endblock %}

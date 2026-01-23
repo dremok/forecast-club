@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Forecast Club{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/htmx.min.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <a href="/" class="logo">Forecast Club</a>
+            {% if user %}
+            <nav>
+                <a href="/feed" {% if active_page == 'feed' %}class="active"{% endif %}>Feed</a>
+                <a href="/leaderboard" {% if active_page == 'leaderboard' %}class="active"{% endif %}>Leaderboard</a>
+                <a href="/profile" {% if active_page == 'profile' %}class="active"{% endif %}>Profile</a>
+            </nav>
+            {% else %}
+            <nav>
+                <a href="/login" class="btn btn-primary btn-sm">Log in</a>
+            </nav>
+            {% endif %}
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            {% if error %}
+            <div class="message message-error">{{ error }}</div>
+            {% endif %}
+            {% if success %}
+            <div class="message message-success">{{ success }}</div>
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

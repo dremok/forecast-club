@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Feed - Forecast Club{% endblock %}
+
+{% block content %}
+<div class="flex flex-between flex-center mb-4">
+    <h1>Predictions</h1>
+    <a href="/predictions/new" class="btn btn-primary">+ New</a>
+</div>
+
+{% if groups %}
+<div class="group-selector">
+    <select
+        hx-get="/feed"
+        hx-target="#predictions-list"
+        hx-swap="innerHTML"
+        hx-include="[name='status']"
+        name="group_id"
+    >
+        <option value="">All groups</option>
+        {% for group in groups %}
+        <option value="{{ group.id }}" {% if selected_group_id == group.id %}selected{% endif %}>
+            {{ group.name }}
+        </option>
+        {% endfor %}
+    </select>
+</div>
+
+<div class="tabs" id="feed-tabs">
+    <a href="#" class="tab {% if status_filter == 'open' %}active{% endif %}"
+       hx-get="/feed?status=open{% if selected_group_id %}&group_id={{ selected_group_id }}{% endif %}"
+       hx-target="#predictions-list"
+       hx-swap="innerHTML"
+       onclick="setActiveTab(this)">
+        Open
+    </a>
+    <a href="#" class="tab {% if status_filter == 'resolved' %}active{% endif %}"
+       hx-get="/feed?status=resolved{% if selected_group_id %}&group_id={{ selected_group_id }}{% endif %}"
+       hx-target="#predictions-list"
+       hx-swap="innerHTML"
+       onclick="setActiveTab(this)">
+        Resolved
+    </a>
+    <a href="#" class="tab {% if not status_filter %}active{% endif %}"
+       hx-get="/feed{% if selected_group_id %}?group_id={{ selected_group_id }}{% endif %}"
+       hx-target="#predictions-list"
+       hx-swap="innerHTML"
+       onclick="setActiveTab(this)">
+        All
+    </a>
+</div>
+
+<script>
+function setActiveTab(el) {
+    document.querySelectorAll('#feed-tabs .tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+}
+</script>
+
+<div id="predictions-list">
+    {% include "partials/prediction_list.html" %}
+</div>
+
+{% else %}
+<div class="empty-state">
+    <h2>No groups yet</h2>
+    <p>Create or join a group to start making predictions.</p>
+    <a href="/groups/new" class="btn btn-primary mt-4">Create a group</a>
+    <p class="mt-3">Or <a href="/groups/join">join with an invite code</a></p>
+</div>
+{% endif %}
+{% endblock %}

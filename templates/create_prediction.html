@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}New Prediction - Forecast Club{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="/feed" class="text-muted">&larr; Back to feed</a>
+</div>
+
+<h1>New Prediction</h1>
+
+<div class="card">
+    <form method="POST" action="/predictions/new">
+        <div class="form-group">
+            <label for="group_id">Group</label>
+            <select name="group_id" id="group_id" required>
+                {% for group in groups %}
+                <option value="{{ group.id }}">{{ group.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="title">Prediction</label>
+            <input type="text" name="title" id="title" required
+                   placeholder="e.g., Bitcoin hits $200K by end of 2025">
+            <p class="help-text">A clear, verifiable statement</p>
+        </div>
+
+        <div class="form-group">
+            <label for="description">Description (optional)</label>
+            <textarea name="description" id="description"
+                      placeholder="Additional context or background"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="resolution_criteria">Resolution criteria (optional)</label>
+            <textarea name="resolution_criteria" id="resolution_criteria"
+                      placeholder="How will this be judged? e.g., 'Based on Coinbase price at midnight UTC'"></textarea>
+            <p class="help-text">Be specific to avoid ambiguity later</p>
+        </div>
+
+        <div class="form-group">
+            <label for="resolution_date">Resolution date</label>
+            <input type="date" name="resolution_date" id="resolution_date" required>
+            <p class="help-text">Forecasts lock at 75% of time elapsed (e.g., 30 days before for a 120-day prediction)</p>
+        </div>
+
+        <hr style="margin: 24px 0; border: none; border-top: 1px solid var(--gray-200);">
+
+        <h3>Your initial forecast</h3>
+
+        <div class="form-group">
+            <label>Your probability</label>
+            <div class="probability-input">
+                <input type="range" name="probability" min="0" max="100" step="1" value="50"
+                       oninput="this.nextElementSibling.textContent = this.value + '%'">
+                <span class="probability-value">50%</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="reasoning">Your reasoning (optional)</label>
+            <textarea name="reasoning" id="reasoning"
+                      placeholder="Why do you think this?"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">Create prediction</button>
+    </form>
+</div>
+{% endblock %}

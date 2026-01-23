@@ -14,8 +14,9 @@ A simple app where you:
 1. Create predictions with clear resolution criteria and dates
 2. Assign your confidence level (probability)
 3. Others in your group add their forecasts
-4. When the date arrives, resolve the prediction
-5. Everyone gets scored using Brier score (rewards calibration, not just being right)
+4. Forecasts lock at 75% of time elapsed (no last-minute changes)
+5. When the date arrives, resolve the prediction
+6. Everyone gets scored using Brier score (rewards calibration, not just being right)
 
 ## Key Differentiator
 
@@ -27,19 +28,25 @@ Unlike Metaculus (complex, public) or Manifold (trading-focused), Forecast Club 
 ## MVP Scope (2-week build)
 
 ### Week 1: Backend
-- [ ] Data models (Prediction, Forecast, User, Group)
-- [ ] SQLite database + migrations
-- [ ] CRUD API for predictions
-- [ ] Forecast submission
-- [ ] Brier score calculation
-- [ ] Resolution workflow
+- [x] Data models (Prediction, Forecast, User, Group)
+- [x] SQLite database + migrations
+- [x] CRUD API for predictions
+- [x] Forecast submission
+- [x] Brier score calculation
+- [x] Resolution workflow
 
 ### Week 2: Frontend + Deploy
-- [ ] Simple UI with HTMX (fast, minimal JS)
-- [ ] Magic link authentication
-- [ ] Prediction feed
-- [ ] Leaderboard with calibration charts
+- [x] Simple UI with HTMX (fast, minimal JS)
+- [x] Mobile-first responsive design
+- [x] Magic link authentication
+- [x] Prediction feed
+- [x] Leaderboard with calibration charts
 - [ ] Deploy to Railway
+
+### Week 3-4: iOS App
+- [ ] SwiftUI app consuming the API
+- [ ] Push notifications for new predictions and resolutions
+- [ ] Share via TestFlight with friends
 
 ## Tech Stack
 
@@ -48,9 +55,24 @@ Unlike Metaculus (complex, public) or Manifold (trading-focused), Forecast Club 
 | Backend | FastAPI | Fast, typed, familiar |
 | Database | SQLite → Postgres | Start simple, scale later |
 | ORM | SQLAlchemy 2.0 | Async support, mature |
-| Frontend | Jinja2 + HTMX | Minimal JS, fast iteration |
+| Web Frontend | Jinja2 + HTMX | Minimal JS, fast iteration |
+| iOS App | SwiftUI | Modern, declarative, native feel |
 | Auth | Magic links | No passwords to manage |
 | Hosting | Railway | Simple, cheap ($5/mo) |
+
+## Client Strategy
+
+**Three clients, one API:**
+
+1. **Web (MVP)** — Jinja2 + HTMX, mobile-first responsive design
+2. **iOS App** — Native SwiftUI app for the best mobile experience
+3. **Future: Android** — If demand warrants
+
+The web client must work well on phones since most friends will access via mobile browser before installing the app. Mobile-first CSS ensures usability on all screen sizes.
+
+The FastAPI backend serves as a clean REST API that all clients consume. This means the iOS app is straightforward to build once the backend is solid — it's just a different UI on top of the same endpoints.
+
+**iOS Distribution:** Use TestFlight to share with friends immediately (no App Store review needed for up to 100 testers). Submit to App Store once validated.
 
 ## Data Model
 
@@ -61,10 +83,12 @@ class Prediction:
     creator_id: UUID
     group_id: UUID
     created_at: datetime
-    resolves_at: datetime
+    resolves_at: datetime          # Required
     resolution_criteria: str       # "Defined as >1M deaths attributable to AI"
     status: Literal["open", "resolved_yes", "resolved_no", "ambiguous"]
     resolved_at: datetime | None
+    lock_in_at: datetime           # 75% of time from created_at to resolves_at
+    is_locked: bool                # True if past lock_in_at
 
 class Forecast:
     id: UUID
@@ -115,6 +139,21 @@ def brier_score(probability: float, outcome: bool) -> float:
 | 50%  | Either  | 0.25        | Mediocre (no information) |
 | 70%  | Yes     | 0.09        | Good |
 | 70%  | No      | 0.49        | Bad |
+
+## Lock-in Mechanism
+
+To prevent last-minute forecast changes after seeing new information, forecasts are locked before the resolution date:
+
+- **Lock-in deadline** = 75% of time from prediction creation to resolution
+- After lock-in, no new forecasts or updates are allowed
+- **Only locked-in forecasts count for scoring** — forecasts submitted after the deadline don't affect your Brier score
+
+**Example:** If a prediction is created Jan 1 and resolves Dec 31 (365 days):
+- Lock-in deadline: Oct 1 (day 274, which is 75% of 365)
+- Forecasts can be created/updated until Oct 1
+- Forecasts submitted after Oct 1 won't count for scoring
+
+This encourages early commitment and prevents gaming the system by waiting for more information.
 
 ## API Endpoints
 
@@ -174,7 +213,7 @@ Interpretation: If you say "70% confident" on 10 predictions, ~7 should resolve 
 
 ```
 forecast-club/
-├── app/
+├── app/                      # FastAPI backend
 │   ├── __init__.py
 │   ├── main.py               # FastAPI app, middleware
 │   ├── config.py             # Settings from env
@@ -190,7 +229,7 @@ forecast-club/
 │       ├── predictions.py
 │       ├── forecasts.py
 │       └── stats.py
-├── templates/                # Jinja2 templates
+├── templates/                # Jinja2 templates (web client)
 │   ├── base.html
 │   ├── feed.html
 │   ├── prediction.html
@@ -198,8 +237,15 @@ forecast-club/
 │   ├── leaderboard.html
 │   └── profile.html
 ├── static/
-│   ├── style.css
+│   ├── style.css              # Mobile-first responsive CSS
 │   └── htmx.min.js
+├── ios/                      # SwiftUI iOS app
+│   └── ForecastClub/
+│       ├── ForecastClubApp.swift
+│       ├── Models/
+│       ├── Views/
+│       ├── Services/         # API client
+│       └── Assets.xcassets
 ├── migrations/               # Alembic migrations
 ├── tests/
 │   ├── test_scoring.py

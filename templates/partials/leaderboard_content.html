@@ -1,0 +1,30 @@
+{% if leaderboard %}
+<div class="card mb-4">
+    <p class="text-muted text-center">
+        Lower Brier score = better calibration (0 = perfect, 0.25 = no skill)
+    </p>
+</div>
+
+<ul class="leaderboard">
+    {% for entry in leaderboard %}
+    <li class="leaderboard-item">
+        <span class="leaderboard-rank {% if entry.rank == 1 %}gold{% elif entry.rank == 2 %}silver{% elif entry.rank == 3 %}bronze{% endif %}">
+            #{{ entry.rank }}
+        </span>
+        <div class="leaderboard-user">
+            <div class="leaderboard-name">
+                {{ entry.display_name or entry.email }}
+                {% if entry.user_id == user.id %}(you){% endif %}
+            </div>
+            <div class="leaderboard-forecasts">{{ entry.forecast_count }} forecasts</div>
+        </div>
+        <span class="leaderboard-score">{{ "%.3f"|format(entry.average_brier_score) }}</span>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<div class="empty-state">
+    <h2>No scores yet</h2>
+    <p>Forecasts need to be resolved before scores appear.</p>
+</div>
+{% endif %}

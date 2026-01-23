@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Leaderboard - Forecast Club{% endblock %}
+
+{% block content %}
+<h1>Leaderboard</h1>
+
+{% if groups %}
+<div class="group-selector mb-4">
+    <select hx-get="/leaderboard" hx-target="#leaderboard-content" hx-swap="innerHTML" name="group_id">
+        {% for group in groups %}
+        <option value="{{ group.id }}" {% if selected_group_id == group.id %}selected{% endif %}>
+            {{ group.name }}
+        </option>
+        {% endfor %}
+    </select>
+</div>
+
+<div id="leaderboard-content">
+    {% include "partials/leaderboard_content.html" %}
+</div>
+
+{% else %}
+<div class="empty-state">
+    <h2>No groups yet</h2>
+    <p>Join or create a group to see the leaderboard.</p>
+</div>
+{% endif %}
+{% endblock %}
