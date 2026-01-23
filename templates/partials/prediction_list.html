@@ -7,7 +7,9 @@
         <div class="prediction-meta">
             <span>{{ prediction.group.name }}</span>
             <span>by {{ prediction.creator.display_name or prediction.creator.email }}</span>
+            {% if prediction.resolution_date %}
             <span>Resolves {{ prediction.resolution_date.strftime('%b %d, %Y') }}</span>
+            {% endif %}
         </div>
         <div class="prediction-stats">
             <div class="stat">
@@ -22,7 +24,7 @@
             {% endif %}
             <div class="stat">
                 {% if prediction.status.value == 'open' %}
-                    {% if prediction.is_locked %}
+                    {% if prediction.resolution_date and prediction.is_locked %}
                     <span class="badge badge-locked">Locked</span>
                     {% else %}
                     <span class="badge badge-open">Open</span>

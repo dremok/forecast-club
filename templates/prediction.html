@@ -13,10 +13,12 @@
     <div class="prediction-meta mb-3">
         <span>{{ prediction.group.name }}</span>
         <span>by {{ prediction.creator.display_name or prediction.creator.email }}</span>
+        {% if prediction.resolution_date %}
         <span>Resolves {{ prediction.resolution_date.strftime('%b %d, %Y') }}</span>
+        {% endif %}
     </div>
 
-    {% if prediction.status.value == 'open' %}
+    {% if prediction.status.value == 'open' and prediction.resolution_date %}
     <div class="lock-in-info mb-3">
         {% if prediction.is_locked %}
         <span class="badge badge-locked">Forecasts Locked</span>

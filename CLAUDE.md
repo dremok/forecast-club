@@ -66,6 +66,18 @@ tests/
 - **Lock-in:** Forecasts lock at 75% of time elapsed; only locked forecasts count for scoring
 - **Brier Score:** `(probability - actual)²` — lower is better (0 = perfect, 0.25 = no information, 1 = maximally wrong)
 
+## Post-Feature Checklist
+
+After completing any feature, ALWAYS:
+
+1. **Run unit tests** - `pytest` to catch regressions
+2. **Start the server** - `uvicorn app.main:app --reload --port 8080`
+3. **Browse the webapp** - Use Chrome MCP tools to visually verify:
+   - Navigate to affected pages
+   - Check for errors (500s, broken layouts)
+   - Test the new functionality end-to-end
+4. **Fix any issues** before considering the feature complete
+
 ## Key Models
 
 - `Prediction` has status: `open | resolved_yes | resolved_no | ambiguous`
