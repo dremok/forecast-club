@@ -10,9 +10,12 @@ from sqlalchemy.orm import selectinload
 
 from app.auth import (
     create_access_token,
+    create_group_invite_token,
     create_magic_link_token,
+    send_group_invite_email,
     send_magic_link_email,
     verify_access_token,
+    verify_group_invite_token,
     verify_magic_link_token,
 )
 from app.config import get_settings
@@ -456,6 +459,59 @@ async def resolve_prediction_page(
     return RedirectResponse(f"/predictions/{prediction_id}", status_code=303)
 
 
+@router.post("/predictions/{prediction_id}/delete")
+async def delete_prediction(
+    request: Request,
+    prediction_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Delete a resolved prediction (admin only)."""
+    user = await get_current_user_optional(request, db)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+
+    result = await db.execute(
+        select(Prediction).where(Prediction.id == prediction_id)
+    )
+    prediction = result.scalar_one_or_none()
+    if not prediction:
+        raise HTTPException(status_code=404)
+
+    # Check permission (must be admin or creator)
+    membership_result = await db.execute(
+        select(GroupMembership).where(
+            GroupMembership.group_id == prediction.group_id,
+            GroupMembership.user_id == user.id,
+        )
+    )
+    membership = membership_result.scalar_one_or_none()
+    if not membership:
+        raise HTTPException(status_code=403)
+
+    can_delete = (
+        prediction.creator_id == user.id or membership.role == GroupRole.admin
+    )
+    if not can_delete:
+        raise HTTPException(status_code=403, detail="Only admins or creator can delete")
+
+    # Only allow deleting resolved predictions
+    if prediction.status == PredictionStatus.open:
+        raise HTTPException(status_code=400, detail="Cannot delete open predictions")
+
+    # Delete associated forecasts first
+    await db.execute(
+        select(Forecast).where(Forecast.prediction_id == prediction_id)
+    )
+    from sqlalchemy import delete
+    await db.execute(delete(Forecast).where(Forecast.prediction_id == prediction_id))
+
+    # Delete the prediction
+    await db.delete(prediction)
+    await db.commit()
+
+    return RedirectResponse("/feed", status_code=303)
+
+
 # ============ Leaderboard ============
 
 
@@ -650,6 +706,34 @@ async def profile_page(
 # ============ Groups ============
 
 
+@router.get("/groups", response_class=HTMLResponse)
+async def groups_list_page(
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    user = await get_current_user_optional(request, db)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+
+    # Get user's groups with membership info
+    groups_result = await db.execute(
+        select(GroupMembership)
+        .options(selectinload(GroupMembership.group))
+        .where(GroupMembership.user_id == user.id)
+    )
+    groups = list(groups_result.scalars().all())
+
+    return templates.TemplateResponse(
+        "groups.html",
+        {
+            "request": request,
+            "user": user,
+            "groups": groups,
+            "active_page": "groups",
+        },
+    )
+
+
 @router.get("/groups/new", response_class=HTMLResponse)
 async def new_group_page(
     request: Request,
@@ -748,3 +832,243 @@ async def join_group_submit(
     await db.commit()
 
     return RedirectResponse("/feed", status_code=303)
+
+
+@router.get("/groups/{group_id}", response_class=HTMLResponse)
+async def group_detail_page(
+    request: Request,
+    group_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    user = await get_current_user_optional(request, db)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+
+    # Get group
+    result = await db.execute(select(Group).where(Group.id == group_id))
+    group = result.scalar_one_or_none()
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+
+    # Check membership and get role
+    membership_result = await db.execute(
+        select(GroupMembership).where(
+            GroupMembership.group_id == group_id,
+            GroupMembership.user_id == user.id,
+        )
+    )
+    membership = membership_result.scalar_one_or_none()
+    if not membership:
+        raise HTTPException(status_code=403, detail="Not a member of this group")
+
+    is_admin = membership.role == GroupRole.admin
+
+    # Get all members
+    members_result = await db.execute(
+        select(GroupMembership)
+        .options(selectinload(GroupMembership.user))
+        .where(GroupMembership.group_id == group_id)
+    )
+    members = list(members_result.scalars().all())
+
+    # Get active predictions (open status) with forecasts
+    predictions_result = await db.execute(
+        select(Prediction)
+        .options(selectinload(Prediction.forecasts))
+        .where(
+            Prediction.group_id == group_id,
+            Prediction.status == PredictionStatus.open,
+        )
+        .order_by(Prediction.created_at.desc())
+    )
+    predictions = list(predictions_result.scalars().all())
+
+    # Get total prediction count (including resolved)
+    all_pred_result = await db.execute(
+        select(Prediction).where(Prediction.group_id == group_id)
+    )
+    prediction_count = len(list(all_pred_result.scalars().all()))
+
+    return templates.TemplateResponse(
+        "group_detail.html",
+        {
+            "request": request,
+            "user": user,
+            "group": group,
+            "members": members,
+            "is_admin": is_admin,
+            "prediction_count": prediction_count,
+            "predictions": predictions,
+        },
+    )
+
+
+@router.post("/groups/{group_id}/invite", response_class=HTMLResponse)
+async def send_group_invite(
+    request: Request,
+    group_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    email: Annotated[str, Form()],
+):
+    user = await get_current_user_optional(request, db)
+    if not user:
+        raise HTTPException(status_code=401)
+
+    # Get group
+    result = await db.execute(select(Group).where(Group.id == group_id))
+    group = result.scalar_one_or_none()
+    if not group:
+        raise HTTPException(status_code=404)
+
+    # Check admin
+    membership_result = await db.execute(
+        select(GroupMembership).where(
+            GroupMembership.group_id == group_id,
+            GroupMembership.user_id == user.id,
+        )
+    )
+    membership = membership_result.scalar_one_or_none()
+    if not membership or membership.role != GroupRole.admin:
+        return templates.TemplateResponse(
+            "partials/invite_result.html",
+            {"request": request, "success": False, "message": "Only admins can invite members"},
+        )
+
+    # Create invite token and link
+    token = create_group_invite_token(email, group_id)
+    invite_link = f"{settings.base_url}/invite/accept?token={token}"
+
+    # Get inviter display name
+    inviter_name = user.display_name or user.email
+
+    # Send email
+    await send_group_invite_email(email, inviter_name, group.name, invite_link)
+
+    return templates.TemplateResponse(
+        "partials/invite_result.html",
+        {"request": request, "success": True, "message": f"Invite sent to {email}"},
+    )
+
+
+@router.get("/invite/accept")
+async def accept_group_invite(
+    token: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Accept a group invite - logs in/registers user and adds to group."""
+    result = verify_group_invite_token(token)
+    if result is None:
+        return RedirectResponse("/login?error=invalid_invite", status_code=303)
+
+    email, group_id = result
+
+    # Verify group exists
+    group_result = await db.execute(select(Group).where(Group.id == group_id))
+    group = group_result.scalar_one_or_none()
+    if not group:
+        return RedirectResponse("/login?error=group_not_found", status_code=303)
+
+    # Get or create user
+    user_result = await db.execute(select(User).where(User.email == email))
+    user = user_result.scalar_one_or_none()
+
+    if user is None:
+        user = User(email=email)
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+    # Check if already a member
+    membership_result = await db.execute(
+        select(GroupMembership).where(
+            GroupMembership.group_id == group_id,
+            GroupMembership.user_id == user.id,
+        )
+    )
+    existing_membership = membership_result.scalar_one_or_none()
+
+    if not existing_membership:
+        # Add to group
+        membership = GroupMembership(
+            user_id=user.id,
+            group_id=group_id,
+            role=GroupRole.member,
+        )
+        db.add(membership)
+        await db.commit()
+
+    # Create access token and set cookie
+    access_token = create_access_token(user.id)
+    response = RedirectResponse(f"/groups/{group_id}", status_code=303)
+    response.set_cookie(
+        AUTH_COOKIE,
+        access_token,
+        httponly=True,
+        secure=not settings.debug,
+        samesite="lax",
+        max_age=settings.access_token_expire_minutes * 60,
+    )
+    return response
+
+
+@router.post("/groups/{group_id}/members/{member_id}/remove", response_class=HTMLResponse)
+async def remove_group_member(
+    request: Request,
+    group_id: int,
+    member_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Remove a member from a group (admin only)."""
+    user = await get_current_user_optional(request, db)
+    if not user:
+        raise HTTPException(status_code=401)
+
+    # Check admin permission
+    admin_result = await db.execute(
+        select(GroupMembership).where(
+            GroupMembership.group_id == group_id,
+            GroupMembership.user_id == user.id,
+        )
+    )
+    admin_membership = admin_result.scalar_one_or_none()
+    if not admin_membership or admin_membership.role != GroupRole.admin:
+        raise HTTPException(status_code=403, detail="Only admins can remove members")
+
+    # Can't remove yourself
+    if member_id == user.id:
+        raise HTTPException(status_code=400, detail="Cannot remove yourself")
+
+    # Find and delete the membership
+    member_result = await db.execute(
+        select(GroupMembership).where(
+            GroupMembership.group_id == group_id,
+            GroupMembership.user_id == member_id,
+        )
+    )
+    membership = member_result.scalar_one_or_none()
+    if membership:
+        await db.delete(membership)
+        await db.commit()
+
+    # Get group for template
+    group_result = await db.execute(select(Group).where(Group.id == group_id))
+    group = group_result.scalar_one_or_none()
+
+    # Get updated members list
+    members_result = await db.execute(
+        select(GroupMembership)
+        .options(selectinload(GroupMembership.user))
+        .where(GroupMembership.group_id == group_id)
+    )
+    members = list(members_result.scalars().all())
+
+    return templates.TemplateResponse(
+        "partials/members_list.html",
+        {
+            "request": request,
+            "user": user,
+            "group": group,
+            "members": members,
+            "is_admin": True,
+        },
+    )

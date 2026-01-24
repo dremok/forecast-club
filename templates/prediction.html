@@ -67,6 +67,11 @@
                 <button type="submit" class="btn btn-secondary btn-sm" onclick="return confirm('Mark as ambiguous?')">Ambiguous</button>
             </form>
         </div>
+        {% elif can_resolve and prediction.status.value != 'open' %}
+        <form method="POST" action="/predictions/{{ prediction.id }}/delete" style="display:inline">
+            <button type="submit" class="btn btn-sm" style="background: #ef4444; color: white;"
+                    onclick="return confirm('Delete this prediction? This cannot be undone.')">Delete</button>
+        </form>
         {% endif %}
     </div>
 </div>

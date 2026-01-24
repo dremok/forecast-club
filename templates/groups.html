@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Groups - Forecast Club{% endblock %}
+
+{% block content %}
+<div class="flex flex-between flex-center mb-4">
+    <h1 class="mb-0">Your Groups</h1>
+    <a href="/groups/new" class="btn btn-primary">+ New Group</a>
+</div>
+
+{% if groups %}
+<div class="card-list">
+    {% for membership in groups %}
+    <a href="/groups/{{ membership.group.id }}" class="card mb-3" style="display: block; text-decoration: none; color: inherit;">
+        <div class="flex flex-between flex-center">
+            <div>
+                <h2 class="mb-1" style="font-size: 1.25rem;">{{ membership.group.name }}</h2>
+                {% if membership.group.description %}
+                <p class="text-muted mb-0" style="font-size: 0.9rem;">{{ membership.group.description }}</p>
+                {% endif %}
+            </div>
+            <span class="badge {% if membership.role.value == 'admin' %}badge-open{% else %}badge-ambiguous{% endif %}">
+                {{ membership.role.value }}
+            </span>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <p class="text-muted mb-3">You're not a member of any groups yet.</p>
+    <div class="flex" style="gap: 12px;">
+        <a href="/groups/new" class="btn btn-primary">Create a Group</a>
+        <a href="/groups/join" class="btn btn-secondary">Join with Invite Code</a>
+    </div>
+</div>
+{% endif %}
+
+<p class="mt-4">
+    <a href="/groups/join">Join a group with invite code</a>
+</p>
+{% endblock %}

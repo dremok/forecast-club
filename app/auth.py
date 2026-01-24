@@ -145,3 +145,95 @@ def _print_magic_link_to_console(email: str, magic_link: str) -> None:
     print(f"Magic link for {email}:")
     print(magic_link)
     print(f"{'='*50}\n")
+
+
+def create_group_invite_token(email: str, group_id: int) -> str:
+    """Create a JWT token encoding email + group_id for group invitations."""
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=settings.magic_link_expire_minutes
+    )
+    to_encode = {"email": email, "group_id": group_id, "type": "group_invite", "exp": expire}
+    return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+
+
+def verify_group_invite_token(token: str) -> tuple[str, int] | None:
+    """Verify and decode a group invite token. Returns (email, group_id) or None."""
+    try:
+        payload = jwt.decode(
+            token, settings.secret_key, algorithms=[settings.algorithm]
+        )
+        email: str = payload.get("email")
+        group_id: int = payload.get("group_id")
+        token_type: str = payload.get("type")
+        if email is None or group_id is None or token_type != "group_invite":
+            return None
+        return (email, group_id)
+    except JWTError:
+        return None
+
+
+async def send_group_invite_email(
+    email: str, inviter_name: str, group_name: str, invite_link: str
+) -> bool:
+    """
+    Send group invitation email via Resend.
+    Returns True if sent successfully, False otherwise.
+    """
+    cfg = get_settings()
+    if not cfg.email_enabled:
+        _print_invite_link_to_console(email, inviter_name, group_name, invite_link)
+        return True
+
+    try:
+        url = "https://api.resend.com/emails"
+        headers = {
+            "Authorization": f"Bearer {cfg.resend_api_key}",
+            "Content-Type": "application/json",
+        }
+
+        body = f"""Hi!
+
+{inviter_name} invited you to join '{group_name}' on Forecast Club.
+
+Click the link below to join:
+
+{invite_link}
+
+This link will expire in {cfg.magic_link_expire_minutes} minutes.
+
+- Forecast Club"""
+
+        from_address = f"{cfg.email_from_name} <{cfg.email_from_address}>"
+        data = {
+            "from": from_address,
+            "to": [email],
+            "subject": f"Join '{group_name}' on Forecast Club",
+            "text": body,
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, headers=headers, json=data)
+
+        if response.status_code == 200:
+            return True
+        else:
+            print(f"Resend error ({response.status_code}): {response.text}")
+            _print_invite_link_to_console(email, inviter_name, group_name, invite_link)
+            return False
+
+    except Exception as e:
+        print(f"Failed to send invite email: {e}")
+        _print_invite_link_to_console(email, inviter_name, group_name, invite_link)
+        return False
+
+
+def _print_invite_link_to_console(
+    email: str, inviter_name: str, group_name: str, invite_link: str
+) -> None:
+    """Print invite link to console for development."""
+    print(f"\n{'='*50}")
+    print(f"Group invite for {email}:")
+    print(f"Invited by: {inviter_name}")
+    print(f"Group: {group_name}")
+    print(invite_link)
+    print(f"{'='*50}\n")

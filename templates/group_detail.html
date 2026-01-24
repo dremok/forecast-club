@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}{{ group.name }} - Forecast Club{% endblock %}
+
+{% block content %}
+<h1>{{ group.name }}</h1>
+
+{% if group.description %}
+<p class="text-muted mb-4">{{ group.description }}</p>
+{% endif %}
+
+<!-- Group info -->
+<div class="card mb-4">
+    <h2>Group Info</h2>
+    <div class="prediction-stats" style="border-top: none; padding-top: 0;">
+        <div class="stat">
+            <span class="stat-value">{{ members|length }}</span>
+            <span class="stat-label">Members</span>
+        </div>
+        <div class="stat">
+            <span class="stat-value">{{ prediction_count }}</span>
+            <span class="stat-label">Predictions</span>
+        </div>
+    </div>
+
+    <p class="text-muted mt-3">
+        <strong>Invite Code:</strong> {{ group.invite_code }}
+    </p>
+</div>
+
+<!-- Members list -->
+<div class="card mb-4" id="members-list">
+    <h2>Members</h2>
+    <ul style="list-style: none;">
+        {% for membership in members %}
+        <li class="flex flex-between flex-center" style="padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
+            <span>{{ membership.user.display_name or membership.user.email }}</span>
+            <div class="flex flex-center" style="gap: 8px;">
+                <span class="badge {% if membership.role.value == 'admin' %}badge-open{% else %}badge-ambiguous{% endif %}">
+                    {{ membership.role.value }}
+                </span>
+                {% if is_admin and membership.user_id != user.id %}
+                <button class="btn btn-sm" style="background: #ef4444; color: white; padding: 2px 8px; font-size: 0.75rem;"
+                        hx-post="/groups/{{ group.id }}/members/{{ membership.user_id }}/remove"
+                        hx-target="#members-list"
+                        hx-swap="outerHTML"
+                        hx-confirm="Remove {{ membership.user.display_name or membership.user.email }} from the group?">
+                    Remove
+                </button>
+                {% endif %}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+
+<!-- Invite form (admin only) -->
+{% if is_admin %}
+<div class="card mb-4">
+    <h2>Invite Member</h2>
+    <p class="text-muted mb-3">Send an email invite to add someone to this group.</p>
+
+    <form hx-post="/groups/{{ group.id }}/invite"
+          hx-target="#invite-result"
+          hx-swap="innerHTML">
+        <div class="form-group">
+            <label for="email">Email address</label>
+            <input type="email" id="email" name="email" required
+                   placeholder="friend@example.com">
+        </div>
+        <button type="submit" class="btn btn-primary">Send Invite</button>
+    </form>
+
+    <div id="invite-result" class="mt-3"></div>
+</div>
+{% endif %}
+
+<!-- Active Predictions -->
+<div class="card mb-4">
+    <div class="flex flex-between flex-center mb-3">
+        <h2 class="mb-0">Active Predictions</h2>
+        <a href="/predictions/new" class="btn btn-primary btn-sm">+ New</a>
+    </div>
+
+    {% if predictions %}
+    <ul style="list-style: none;">
+        {% for prediction in predictions %}
+        <li style="padding: 12px 0; border-bottom: 1px solid var(--gray-100);">
+            <a href="/predictions/{{ prediction.id }}" style="font-weight: 500;">{{ prediction.title }}</a>
+            <div class="text-muted" style="font-size: 0.85rem; margin-top: 4px;">
+                {{ prediction.forecasts|length }} forecast{% if prediction.forecasts|length != 1 %}s{% endif %}
+                · Resolves {{ prediction.resolution_date.strftime('%b %d, %Y') if prediction.resolution_date else 'TBD' }}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-muted">No active predictions yet.</p>
+    {% endif %}
+
+    <p class="mt-3">
+        <a href="/feed?group_id={{ group.id }}">View all predictions (including resolved)</a>
+    </p>
+</div>
+{% endblock %}

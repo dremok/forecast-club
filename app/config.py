@@ -11,7 +11,7 @@ class Settings(BaseSettings):
 
     # Auth
     secret_key: str
-    access_token_expire_minutes: int = 10080  # 7 days
+    access_token_expire_minutes: int = 43200  # 30 days
     magic_link_expire_minutes: int = 15
     algorithm: str = "HS256"
 

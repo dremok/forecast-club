@@ -97,7 +97,7 @@
     <ul style="list-style: none;">
         {% for membership in groups %}
         <li class="flex flex-between flex-center" style="padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
-            <span>{{ membership.group.name }}</span>
+            <a href="/groups/{{ membership.group.id }}">{{ membership.group.name }}</a>
             <span class="badge {% if membership.role.value == 'admin' %}badge-open{% else %}badge-ambiguous{% endif %}">
                 {{ membership.role.value }}
             </span>

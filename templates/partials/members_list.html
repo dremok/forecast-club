@@ -1,0 +1,24 @@
+<div class="card mb-4" id="members-list">
+    <h2>Members</h2>
+    <ul style="list-style: none;">
+        {% for membership in members %}
+        <li class="flex flex-between flex-center" style="padding: 8px 0; border-bottom: 1px solid var(--gray-100);">
+            <span>{{ membership.user.display_name or membership.user.email }}</span>
+            <div class="flex flex-center" style="gap: 8px;">
+                <span class="badge {% if membership.role.value == 'admin' %}badge-open{% else %}badge-ambiguous{% endif %}">
+                    {{ membership.role.value }}
+                </span>
+                {% if is_admin and membership.user_id != user.id %}
+                <button class="btn btn-sm" style="background: #ef4444; color: white; padding: 2px 8px; font-size: 0.75rem;"
+                        hx-post="/groups/{{ group.id }}/members/{{ membership.user_id }}/remove"
+                        hx-target="#members-list"
+                        hx-swap="outerHTML"
+                        hx-confirm="Remove {{ membership.user.display_name or membership.user.email }} from the group?">
+                    Remove
+                </button>
+                {% endif %}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</div>

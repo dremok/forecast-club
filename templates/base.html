@@ -14,6 +14,7 @@
             {% if user %}
             <nav>
                 <a href="/feed" {% if active_page == 'feed' %}class="active"{% endif %}>Feed</a>
+                <a href="/groups" {% if active_page == 'groups' %}class="active"{% endif %}>Groups</a>
                 <a href="/leaderboard" {% if active_page == 'leaderboard' %}class="active"{% endif %}>Leaderboard</a>
                 <a href="/profile" {% if active_page == 'profile' %}class="active"{% endif %}>Profile</a>
             </nav>
