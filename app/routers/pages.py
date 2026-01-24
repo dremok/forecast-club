@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from app.auth import (
     create_access_token,
     create_magic_link_token,
+    send_magic_link_email,
     verify_access_token,
     verify_magic_link_token,
 )
@@ -91,11 +92,7 @@ async def login_submit(
     token = create_magic_link_token(email)
     magic_link = f"{settings.base_url}/auth/callback?token={token}"
 
-    if settings.debug:
-        print(f"\n{'='*50}")
-        print(f"Magic link for {email}:")
-        print(magic_link)
-        print(f"{'='*50}\n")
+    await send_magic_link_email(email, magic_link)
 
     return templates.TemplateResponse(
         "check_email.html",

@@ -8,6 +8,7 @@ from app.auth import (
     create_access_token,
     create_magic_link_token,
     get_current_user,
+    send_magic_link_email,
     verify_magic_link_token,
 )
 from app.config import get_settings
@@ -26,17 +27,12 @@ async def request_magic_link(
 ) -> dict:
     """
     Request a magic link for email-based authentication.
-    In debug mode, the link is printed to console.
-    In production, this would send an email.
+    Sends email via SendGrid, falls back to console in dev.
     """
     token = create_magic_link_token(request.email)
     magic_link = f"{settings.base_url}/auth/verify?token={token}"
 
-    if settings.debug:
-        print(f"\n{'='*50}")
-        print(f"Magic link for {request.email}:")
-        print(magic_link)
-        print(f"{'='*50}\n")
+    await send_magic_link_email(request.email, magic_link)
 
     return {"message": "Magic link sent to your email"}
 

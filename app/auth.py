@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
+import httpx
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
@@ -82,3 +83,65 @@ async def get_current_user(
         )
 
     return user
+
+
+async def send_magic_link_email(email: str, magic_link: str) -> bool:
+    """
+    Send magic link via Resend.
+    Returns True if sent successfully, False otherwise.
+    Falls back to console printing if not configured.
+    """
+    cfg = get_settings()
+    if not cfg.email_enabled:
+        _print_magic_link_to_console(email, magic_link)
+        return True
+
+    try:
+        url = "https://api.resend.com/emails"
+        headers = {
+            "Authorization": f"Bearer {cfg.resend_api_key}",
+            "Content-Type": "application/json",
+        }
+
+        body = f"""Hello!
+
+Click the link below to sign in to Forecast Club:
+
+{magic_link}
+
+This link will expire in {cfg.magic_link_expire_minutes} minutes.
+
+If you didn't request this, you can safely ignore this email.
+
+- Forecast Club"""
+
+        from_address = f"{cfg.email_from_name} <{cfg.email_from_address}>"
+        data = {
+            "from": from_address,
+            "to": [email],
+            "subject": "Sign in to Forecast Club",
+            "text": body,
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, headers=headers, json=data)
+
+        if response.status_code == 200:
+            return True
+        else:
+            print(f"Resend error ({response.status_code}): {response.text}")
+            _print_magic_link_to_console(email, magic_link)
+            return False
+
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+        _print_magic_link_to_console(email, magic_link)
+        return False
+
+
+def _print_magic_link_to_console(email: str, magic_link: str) -> None:
+    """Print magic link to console for development."""
+    print(f"\n{'='*50}")
+    print(f"Magic link for {email}:")
+    print(magic_link)
+    print(f"{'='*50}\n")
