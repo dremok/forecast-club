@@ -9,6 +9,17 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "sqlite+aiosqlite:///./forecast_club.db"
 
+    @property
+    def async_database_url(self) -> str:
+        """Convert database URL to async version for SQLAlchemy."""
+        url = self.database_url
+        # Railway provides postgresql:// but SQLAlchemy async needs postgresql+asyncpg://
+        if url.startswith("postgresql://"):
+            return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        if url.startswith("postgres://"):
+            return url.replace("postgres://", "postgresql+asyncpg://", 1)
+        return url
+
     # Auth
     secret_key: str
     access_token_expire_minutes: int = 43200  # 30 days
