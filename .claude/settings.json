@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Before stopping, check: Have you made code changes that should be documented? If yes, remind the user to update CLAUDE.md and README.md with any new features, API changes, or deployment info. If documentation is already up to date or no significant changes were made, allow stopping."
+          }
+        ]
+      }
+    ]
+  }
+}

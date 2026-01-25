@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Forecast Club is a prediction tracking app for private groups. Users create predictions with probabilities, others add their forecasts, and everyone is scored using Brier scores when predictions resolve.
 
-**Status:** MVP complete - backend API, web frontend, and tests implemented.
+**Status:** MVP complete - backend API, web frontend, group management, and deployment config ready.
 
 ## Commands
 
@@ -87,3 +87,26 @@ After completing any feature, ALWAYS:
 - Users belong to Groups via `GroupMembership`
 - Only creator or group admin can resolve predictions
 - Only forecasts created before lock_in_at count for scoring
+
+## Group Management Features
+
+- **Email Invites:** Admins can invite users by email (`POST /groups/{id}/invite`)
+- **Invite Accept:** Link auto-logs in user and adds to group (`GET /invite/accept?token=...`)
+- **Member Removal:** Admins can remove non-admin members
+- **Group Detail Page:** `/groups/{id}` shows members, active predictions, invite form
+- **Groups Tab:** Main navigation has Groups tab listing all user's groups
+- **Delete Predictions:** Admins/creators can delete resolved predictions
+
+## Deployment (Railway)
+
+```bash
+# Procfile runs migrations automatically on deploy
+web: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+```
+
+**Required environment variables:**
+- `DATABASE_URL` - Railway provides with PostgreSQL addon
+- `SECRET_KEY` - Random string for JWT (generate with `python -c "import secrets; print(secrets.token_urlsafe(32))"`)
+- `BASE_URL` - Railway app URL (e.g., `https://forecast-club.up.railway.app`)
+- `RESEND_API_KEY` - For sending emails
+- `EMAIL_FROM_ADDRESS` - Must be from verified Resend domain
