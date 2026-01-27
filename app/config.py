@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     secret_key: str
     access_token_expire_minutes: int = 43200  # 30 days
     magic_link_expire_minutes: int = 15
+    group_invite_expire_days: int = 7
     algorithm: str = "HS256"
 
     # Email (Resend)

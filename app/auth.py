@@ -150,7 +150,7 @@ def _print_magic_link_to_console(email: str, magic_link: str) -> None:
 def create_group_invite_token(email: str, group_id: int) -> str:
     """Create a JWT token encoding email + group_id for group invitations."""
     expire = datetime.now(timezone.utc) + timedelta(
-        minutes=settings.magic_link_expire_minutes
+        days=settings.group_invite_expire_days
     )
     to_encode = {"email": email, "group_id": group_id, "type": "group_invite", "exp": expire}
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
@@ -199,7 +199,7 @@ Click the link below to join:
 
 {invite_link}
 
-This link will expire in {cfg.magic_link_expire_minutes} minutes.
+This link will expire in {cfg.group_invite_expire_days} days.
 
 - Forecast Club"""
 
